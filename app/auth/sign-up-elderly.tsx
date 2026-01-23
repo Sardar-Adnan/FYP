@@ -5,7 +5,7 @@ import { AuthWrapper } from '@/components/ui/AuthWrapper';
 import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
-import { validateEmail, validatePassword, validatePhone } from '@/utils/validation';
+import { validateEmail, validatePassword } from '@/utils/validation';
 import { Colors } from '@/constants/Colors';
 
 export default function SignUpElderlyScreen() {
@@ -32,35 +32,54 @@ export default function SignUpElderlyScreen() {
       Alert.alert('Weak Password', 'Password must be at least 6 characters.');
       return;
     }
-    if (!validatePhone(phone)) {
-      Alert.alert('Invalid Phone', 'Please enter a valid phone number.');
-      return;
-    }
 
     setLoading(true);
     
-    const { error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        data: {
-          role: 'patient',
+    try {
+      // 1. Create Auth User
+      const { data: { user }, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            role: 'elderly',
+            full_name: name,
+            age: parseInt(age),
+            phone: phone,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+      if (!user) throw new Error("No user created");
+
+      // 2. Upsert into Public 'users' table
+      const { error: dbError } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          email: email.trim(),
+          role: 'elderly',
           full_name: name,
           age: parseInt(age),
           phone: phone,
-          address: address,
-        },
-      },
-    });
+          address: address
+        });
 
-    setLoading(false);
+      if (dbError) {
+        console.error("FULL DATABASE ERROR:", JSON.stringify(dbError, null, 2));
+        throw new Error(dbError.message);
+      }
 
-    if (error) {
-      Alert.alert('Signup Failed', error.message);
-    } else {
-      Alert.alert('Success', 'Account created! You can now log in.', [
-        { text: 'OK', onPress: () => router.replace('/auth/login') }
+      Alert.alert('Success', 'Account created! Logging you in...', [
+        { text: 'OK', onPress: () => router.replace('/elderly/dashboard') } // FIXED PATH
       ]);
+
+    } catch (error: any) {
+      console.log("SIGNUP ERROR:", error);
+      Alert.alert('Signup Failed', error.message || "An unexpected error occurred.");
+    } finally {
+      setLoading(false);
     }
   }
 

@@ -7,29 +7,26 @@ export const AuthService = {
    * * @param email The email address of the elderly patient
    * @returns The patient's User ID if found, otherwise null.
    */
-  async verifyPatientEmail(email: string): Promise<string | null> {
-  console.log("Checking for patient email:", email); // <--- Add this log
+  async verifyPatientEmail(email: string) {
+    console.log("SEARCHING FOR:", email); // <--- DEBUG 1: What are we typing?
 
-  try {
+    // 1. Check if user exists in public table
     const { data, error } = await supabase
-      .from('profiles')
-      .select('id, role, email') // Select more fields to debug
-      .eq('email', email) // Ensure exact match
-      .eq('role', 'patient')
+      .from('users')
+      .select('id, role, email') // <--- DEBUG 2: Fetch email to compare
+      .eq('email', email)
+      .eq('role', 'elderly')
       .single();
 
     if (error) {
-      console.error("Supabase Error:", error); // <--- Add this log
-      return null;
+      console.log("SEARCH FAILED. Supabase said:", error.message);
+      // DEBUG 3: If it fails, let's see what is actually in the table
+      const { data: allUsers } = await supabase.from('users').select('email');
+      console.log("EMAILS ACTUALLY IN DB:", JSON.stringify(allUsers));
     }
-    
-    console.log("Found Patient:", data); // <--- Add this log
-    return data.id;
-  } catch (error) {
-    console.error('Error verifying patient email:', error);
-    return null;
-  }
-},
+
+    return data?.id;
+  },
 
   /**
    * Signs out the current user and clears the session.

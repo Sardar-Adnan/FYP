@@ -20,7 +20,14 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.anonymous.OldCareApp"
     },
     "web": {
       "output": "static",
@@ -40,7 +47,27 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-web-browser",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow OldCareApp to access your camera to measure vitals.",
+          "microphonePermission": "Allow OldCareApp to access your microphone for video recording."
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification_icon.png",
+          "color": "#FF231F7C",
+          "sounds": [
+            "./assets/sounds/medication_alert.wav"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Alert, Text, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
 import { AuthWrapper } from '@/components/ui/AuthWrapper';
-import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/ui/Button';
-import { supabase } from '@/lib/supabase';
-import { validateEmail } from '@/utils/validation';
+import { InputField } from '@/components/ui/InputField';
 import { Colors } from '@/constants/Colors';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -15,38 +14,50 @@ export default function ForgotPasswordScreen() {
 
   async function handleReset() {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email.');
-      return;
-    }
-    if (!validateEmail(email)) {
-      Alert.alert('Error', 'Invalid email format.');
+      Alert.alert('Error', 'Please enter your email address.');
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    setLoading(false);
 
-    if (error) {
-      Alert.alert('Failed', error.message);
-    } else {
-      router.push({
-        pathname: '/auth/reset-password-confirm',
-        params: { email: email }
-      });
+    try {
+      // We don't need redirectTo here because we are using OTP code flow
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+
+      if (error) throw error;
+
+      Alert.alert(
+        'Check your Email',
+        'We have sent you a 6-digit verification code.',
+        [{
+          text: 'Enter Code',
+          onPress: () => {
+            // Pass email to next screen so user doesn't have to retype it
+            router.push({
+              pathname: '/auth/reset-password-confirm',
+              params: { email: email.trim() }
+            });
+          }
+        }]
+      );
+
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <AuthWrapper 
-      title="Forgot Password?" 
-      subtitle="Don't worry! Enter your email and we'll send you a code."
+    <AuthWrapper
+      title="Reset Password"
+      subtitle="Enter your email to receive a code."
     >
       <View style={styles.form}>
         <InputField
-          label="Email Address"
+          label="Email"
           icon="mail-outline"
-          placeholder="john@example.com"
+          placeholder="Enter your email"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -54,15 +65,15 @@ export default function ForgotPasswordScreen() {
         />
       </View>
 
-      <Button 
-        title="Send Reset Code" 
-        onPress={handleReset} 
-        isLoading={loading} 
+      <Button
+        title="Send Reset Code"
+        onPress={handleReset}
+        isLoading={loading}
         size="large"
       />
-      
-      <TouchableOpacity 
-        style={styles.backBtn}
+
+      <TouchableOpacity
+        style={styles.backButton}
         onPress={() => router.back()}
       >
         <Text style={styles.backText}>Back to Login</Text>
@@ -72,13 +83,13 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  form: { marginBottom: 24, marginTop: 10 },
-  backBtn: {
+  form: { marginBottom: 24 },
+  backButton: {
     marginTop: 20,
     alignItems: 'center',
   },
   backText: {
     color: Colors.textSecondary,
-    fontFamily: 'Poppins-SemiBold',
+    fontFamily: 'Poppins-Medium',
   },
 });

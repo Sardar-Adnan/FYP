@@ -26,6 +26,7 @@ export default function SignUpCaregiverScreen() {
     setLoading(true);
 
     try {
+      // 1. Verify Patient Exists
       const patientId = await AuthService.verifyPatientEmail(patientEmail.trim().toLowerCase());
 
       if (!patientId) {
@@ -34,6 +35,7 @@ export default function SignUpCaregiverScreen() {
         return;
       }
 
+      // 2. Create Auth User
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -48,6 +50,22 @@ export default function SignUpCaregiverScreen() {
       if (authError) throw authError;
       if (!authData.user) throw new Error("User creation failed");
 
+      // 3. Upsert into Public 'users' table
+      const { error: dbError } = await supabase
+        .from('users')
+        .upsert({
+          id: authData.user.id,
+          email: email.trim().toLowerCase(),
+          role: 'caregiver',
+          full_name: name,
+        });
+
+      if (dbError) {
+        console.error("FULL DATABASE ERROR:", JSON.stringify(dbError, null, 2));
+        throw new Error(dbError.message);
+      }
+
+      // 4. Link to Patient
       const { error: linkError } = await supabase
         .from('caregiver_patient_links')
         .insert({
@@ -57,13 +75,16 @@ export default function SignUpCaregiverScreen() {
           status: 'pending' 
         });
 
-      if (linkError) console.error("Link Creation Failed:", linkError);
+      if (linkError) {
+          console.error("Link Creation Failed:", linkError);
+      }
 
       Alert.alert('Success', 'Account created! Please log in.', [
-        { text: 'OK', onPress: () => router.replace('/auth/login') }
+        { text: 'OK', onPress: () => router.replace('/auth/login') } // FIXED PATH
       ]);
 
     } catch (error: any) {
+      console.log("SIGNUP ERROR:", error);
       Alert.alert('Error', error.message);
     } finally {
       setLoading(false);

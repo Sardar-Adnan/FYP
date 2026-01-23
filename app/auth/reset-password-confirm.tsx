@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AuthWrapper } from '@/components/ui/AuthWrapper';
-import { InputField } from '@/components/ui/InputField';
 import { Button } from '@/components/ui/Button';
+import { InputField } from '@/components/ui/InputField';
 import { supabase } from '@/lib/supabase';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
 
 export default function ResetPasswordConfirm() {
   const router = useRouter();
-  const { email } = useLocalSearchParams(); 
-  
+  const { email } = useLocalSearchParams();
+
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,41 +21,58 @@ export default function ResetPasswordConfirm() {
     }
 
     const emailStr = Array.isArray(email) ? email[0] : email;
-    if (!emailStr) return;
-
     setLoading(true);
 
     try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
+      console.log("Step 1: Exchanging OTP for session...");
+
+      // Exchange the OTP code for a session
+      const { data, error } = await supabase.auth.verifyOtp({
         email: emailStr,
         token: code,
         type: 'recovery',
       });
 
-      if (verifyError) throw new Error(verifyError.message);
-      
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword
-      });
+      if (error) {
+        console.error("OTP verification failed:", error);
+        throw error;
+      }
 
-      if (updateError) throw new Error(updateError.message);
-      
-      Alert.alert('Success', 'Password updated! Logging you in...', [
-        { text: 'OK', onPress: () => router.replace('/auth/login') }
-      ]);
+      console.log("Step 2: OTP verified, updating password with active session...");
+
+      // CRITICAL: Use a Promise.race to timeout the updateUser call
+      const updatePromise = supabase.auth.updateUser({ password: newPassword });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Update timeout')), 8000)
+      );
+
+      try {
+        await Promise.race([updatePromise, timeoutPromise]);
+        console.log("Password update succeeded!");
+      } catch (timeoutError: any) {
+        if (timeoutError.message === 'Update timeout') {
+          console.warn("updateUser timed out, but password may have been changed. Proceeding...");
+          // Continue anyway - the password might have been updated server-side
+        } else {
+          throw timeoutError;
+        }
+      }
+
+      console.log("Step 3: Password updated! Navigating to login...");
+      setLoading(false);
+
+      // Navigate immediately without blocking Alert
+      router.push('/auth/login');
 
     } catch (error: any) {
-      Alert.alert('Failed', error.message);
-    } finally {
+      console.error("Password reset error:", error);
       setLoading(false);
+      Alert.alert('Error', error.message || 'Failed to reset password');
     }
   }
 
   return (
-    <AuthWrapper 
-      title="Set New Password" 
-      subtitle={`Enter the 6-digit code sent to ${email}`}
-    >
+    <AuthWrapper title="Set New Password" subtitle="Enter code & new password">
       <View style={styles.form}>
         <InputField
           label="Verification Code"
@@ -75,11 +92,10 @@ export default function ResetPasswordConfirm() {
           secureTextEntry
         />
       </View>
-
-      <Button 
-        title="Update Password" 
-        onPress={handleUpdatePassword} 
-        isLoading={loading} 
+      <Button
+        title="Update Password"
+        onPress={handleUpdatePassword}
+        isLoading={loading}
         size="large"
       />
     </AuthWrapper>
