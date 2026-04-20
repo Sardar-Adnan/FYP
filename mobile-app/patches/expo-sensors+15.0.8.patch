@@ -1,0 +1,28 @@
+diff --git a/node_modules/expo-sensors/android/src/main/java/expo/modules/sensors/SensorProxy.kt b/node_modules/expo-sensors/android/src/main/java/expo/modules/sensors/SensorProxy.kt
+index 4bface7..1f7026a 100644
+--- a/node_modules/expo-sensors/android/src/main/java/expo/modules/sensors/SensorProxy.kt
++++ b/node_modules/expo-sensors/android/src/main/java/expo/modules/sensors/SensorProxy.kt
+@@ -93,19 +93,19 @@ internal fun ModuleDefinitionBuilder.UseSensorProxy(
+   }
+ 
+   OnActivityEntersForeground {
+-    sensorProxyGetter().onHostResume()
++    // sensorProxyGetter().onHostResume()
+   }
+ 
+   OnActivityEntersBackground {
+-    sensorProxyGetter().onHostPause()
++    // sensorProxyGetter().onHostPause()
+   }
+ 
+   OnActivityDestroys {
+-    sensorProxyGetter().onHostDestroy()
++    // sensorProxyGetter().onHostDestroy()
+   }
+ 
+   OnDestroy {
+-    sensorProxyGetter().onHostDestroy()
++    // sensorProxyGetter().onHostDestroy()
+   }
+ 
+   AsyncFunction("setUpdateInterval") { updateInterval: Int ->
